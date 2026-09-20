@@ -181,4 +181,50 @@
     right: 0;
     border-right-color: var(--border);
   }
+  
 }
+
+/* AUDIO RANGE SLIDERS */
+
+.progress-slider,
+.volume-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border-radius: 20px;
+  outline: none;
+  background: #34343f;
+}
+
+.progress-slider {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+}
+
+.volume-slider {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+}
+
+.progress-slider::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #c4b5fd;
+}
+
+.progress-slider::-moz-range-thumb,
+.volume-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: #c4b5fd;
+}
+
+
