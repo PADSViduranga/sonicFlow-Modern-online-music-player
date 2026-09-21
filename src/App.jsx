@@ -6,6 +6,7 @@ import PlayerBar from "./components/PlayerBar";
 import MusicCard from "./components/MusicCard";
 import PlaylistSection from "./components/PlaylistSection";
 import PlaylistModal from "./components/PlaylistModal";
+import QueuePanel from "./components/QueuePanel";
 import songs from "./data/songs";
 
 function App() {
@@ -20,12 +21,37 @@ function App() {
   const [volume, setVolume] = useState(0.7);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("home");
-  const [playlistQueue, setPlaylistQueue] = useState([]);
+
   const [selectedSongForPlaylist, setSelectedSongForPlaylist] =
     useState(null);
 
+  const [playlistQueue, setPlaylistQueue] = useState([]);
+
+  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
+    const savedHistory = localStorage.getItem(
+      "sonicflow-recently-played"
+    );
+
+    if (!savedHistory) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(savedHistory);
+    } catch (error) {
+      console.error(
+        "Unable to load recently played history:",
+        error
+      );
+
+      return [];
+    }
+  });
+
   const [favoriteSongs, setFavoriteSongs] = useState(() => {
-    const savedFavorites = localStorage.getItem("sonicflow-favorites");
+    const savedFavorites = localStorage.getItem(
+      "sonicflow-favorites"
+    );
 
     if (!savedFavorites) {
       return [];
@@ -40,7 +66,9 @@ function App() {
   });
 
   const [playlists, setPlaylists] = useState(() => {
-    const savedPlaylists = localStorage.getItem("sonicflow-playlists");
+    const savedPlaylists = localStorage.getItem(
+      "sonicflow-playlists"
+    );
 
     if (!savedPlaylists) {
       return [];
@@ -73,6 +101,12 @@ function App() {
     favoriteSongs.includes(song.id)
   );
 
+  const recentlyPlayedSongs = recentlyPlayed
+    .map((songId) =>
+      songs.find((song) => song.id === songId)
+    )
+    .filter(Boolean);
+
   useEffect(() => {
     localStorage.setItem(
       "sonicflow-favorites",
@@ -86,6 +120,30 @@ function App() {
       JSON.stringify(playlists)
     );
   }, [playlists]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "sonicflow-recently-played",
+      JSON.stringify(recentlyPlayed)
+    );
+  }, [recentlyPlayed]);
+
+  useEffect(() => {
+    if (!currentSong) {
+      return;
+    }
+
+    setRecentlyPlayed((previousHistory) => {
+      const updatedHistory = [
+        currentSong.id,
+        ...previousHistory.filter(
+          (songId) => songId !== currentSong.id
+        ),
+      ];
+
+      return updatedHistory.slice(0, 10);
+    });
+  }, [currentSong]);
 
   useEffect(() => {
     const audio = new Audio();
@@ -116,8 +174,7 @@ function App() {
         const remainingSongs = playlistQueueRef.current;
 
         if (remainingSongs.length > 0) {
-          const nextSong = remainingSongs[0];
-          const updatedQueue = remainingSongs.slice(1);
+          const [nextSong, ...updatedQueue] = remainingSongs;
 
           playlistQueueRef.current = updatedQueue;
           setPlaylistQueue(updatedQueue);
@@ -155,7 +212,10 @@ function App() {
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener(
+      "loadedmetadata",
+      handleLoadedMetadata
+    );
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
@@ -164,7 +224,10 @@ function App() {
     return () => {
       audio.pause();
 
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener(
+        "timeupdate",
+        handleTimeUpdate
+      );
       audio.removeEventListener(
         "loadedmetadata",
         handleLoadedMetadata
@@ -222,16 +285,17 @@ function App() {
   };
 
   const handlePlayPlaylist = (playlistSongIds) => {
-    const playlistSongList = playlistSongIds
-      .map((songId) => songs.find((song) => song.id === songId))
+    const playlistSongs = playlistSongIds
+      .map((songId) =>
+        songs.find((song) => song.id === songId)
+      )
       .filter(Boolean);
 
-    if (playlistSongList.length === 0) {
+    if (playlistSongs.length === 0) {
       return;
     }
 
-    const firstSong = playlistSongList[0];
-    const remainingSongs = playlistSongList.slice(1);
+    const [firstSong, ...remainingSongs] = playlistSongs;
 
     playlistModeRef.current = true;
     playlistQueueRef.current = remainingSongs;
@@ -240,10 +304,21 @@ function App() {
     setCurrentSong(firstSong);
   };
 
+  const handleRemoveSongFromQueue = (songId) => {
+    const updatedQueue = playlistQueueRef.current.filter(
+      (song) => song.id !== songId
+    );
+
+    playlistQueueRef.current = updatedQueue;
+    setPlaylistQueue(updatedQueue);
+  };
+
   const handleToggleFavorite = (songId) => {
     setFavoriteSongs((previousFavorites) => {
       if (previousFavorites.includes(songId)) {
-        return previousFavorites.filter((id) => id !== songId);
+        return previousFavorites.filter(
+          (id) => id !== songId
+        );
       }
 
       return [...previousFavorites, songId];
@@ -265,7 +340,9 @@ function App() {
 
   const handleDeletePlaylist = (playlistId) => {
     setPlaylists((previousPlaylists) =>
-      previousPlaylists.filter((playlist) => playlist.id !== playlistId)
+      previousPlaylists.filter(
+        (playlist) => playlist.id !== playlistId
+      )
     );
   };
 
@@ -284,7 +361,10 @@ function App() {
     );
   };
 
-  const handleRemoveSongFromPlaylist = (playlistId, songId) => {
+  const handleRemoveSongFromPlaylist = (
+    playlistId,
+    songId
+  ) => {
     setPlaylists((previousPlaylists) =>
       previousPlaylists.map((playlist) => {
         if (playlist.id !== playlistId) {
@@ -293,7 +373,9 @@ function App() {
 
         return {
           ...playlist,
-          songs: playlist.songs.filter((id) => id !== songId),
+          songs: playlist.songs.filter(
+            (playlistSongId) => playlistSongId !== songId
+          ),
         };
       })
     );
@@ -358,7 +440,10 @@ function App() {
           setIsPlaying(true);
         })
         .catch((error) => {
-          console.error("Playback could not start:", error);
+          console.error(
+            "Playback could not start:",
+            error
+          );
         });
     } else {
       audio.pause();
@@ -436,7 +521,8 @@ function App() {
       return {
         label: "YOUR LIBRARY",
         title: "Your Library",
-        description: "Browse all the music in your collection.",
+        description:
+          "Browse all the music in your collection.",
         songs: songs,
       };
     }
@@ -445,7 +531,8 @@ function App() {
       return {
         label: "DISCOVER",
         title: "Search Music",
-        description: "Find songs, artists, albums, and genres.",
+        description:
+          "Find songs, artists, albums, and genres.",
         songs: filteredSongs,
       };
     }
@@ -454,7 +541,9 @@ function App() {
       label: "YOUR MUSIC SPACE",
       title: "Featured Music",
       description: "",
-      songs: searchQuery.trim() ? filteredSongs : songs.slice(0, 4),
+      songs: searchQuery.trim()
+        ? filteredSongs
+        : songs.slice(0, 4),
     };
   };
 
@@ -476,14 +565,55 @@ function App() {
         <main className="main-content">
           {activeSection === "home" && (
             <section className="welcome-section">
-              <p className="section-label">YOUR MUSIC SPACE</p>
+              <p className="section-label">
+                YOUR MUSIC SPACE
+              </p>
 
               <h1>Everything you love, in one place.</h1>
 
               <p className="welcome-description">
-                Discover music, create playlists, and enjoy your
-                favorite songs.
+                Discover music, create playlists, and enjoy
+                your favorite songs.
               </p>
+
+              {recentlyPlayedSongs.length > 0 && (
+                <section className="recently-played-section">
+                  <div className="section-heading">
+                    <div>
+                      <p className="section-label">
+                        YOUR HISTORY
+                      </p>
+
+                      <h2>Recently Played</h2>
+                    </div>
+
+                    <span className="song-count">
+                      {recentlyPlayedSongs.length} songs
+                    </span>
+                  </div>
+
+                  <div className="music-grid">
+                    {recentlyPlayedSongs
+                      .slice(0, 4)
+                      .map((song) => (
+                        <MusicCard
+                          key={song.id}
+                          song={song}
+                          onSelect={handleSelectSong}
+                          isFavorite={favoriteSongs.includes(
+                            song.id
+                          )}
+                          onToggleFavorite={
+                            handleToggleFavorite
+                          }
+                          onAddToPlaylist={
+                            handleOpenPlaylistModal
+                          }
+                        />
+                      ))}
+                  </div>
+                </section>
+              )}
             </section>
           )}
 
@@ -529,16 +659,24 @@ function App() {
                       key={song.id}
                       song={song}
                       onSelect={handleSelectSong}
-                      isFavorite={favoriteSongs.includes(song.id)}
-                      onToggleFavorite={handleToggleFavorite}
-                      onAddToPlaylist={handleOpenPlaylistModal}
+                      isFavorite={favoriteSongs.includes(
+                        song.id
+                      )}
+                      onToggleFavorite={
+                        handleToggleFavorite
+                      }
+                      onAddToPlaylist={
+                        handleOpenPlaylistModal
+                      }
                     />
                   ))}
                 </div>
               ) : (
                 <div className="empty-search-state">
                   <span className="empty-search-icon">
-                    {activeSection === "favorites" ? "♡" : "⌕"}
+                    {activeSection === "favorites"
+                      ? "♡"
+                      : "⌕"}
                   </span>
 
                   <h3>
@@ -555,6 +693,16 @@ function App() {
                 </div>
               )}
             </section>
+          )}
+
+          {playlistQueue.length > 0 && (
+            <QueuePanel
+              currentSong={currentSong}
+              playlistQueue={playlistQueue}
+              onSelectSong={handleSelectSong}
+              onClearQueue={clearPlaylistQueue}
+              onRemoveSong={handleRemoveSongFromQueue}
+            />
           )}
         </main>
       </div>
