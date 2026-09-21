@@ -1,5 +1,10 @@
-
-function MusicCard({ song, onSelect, isFavorite, onToggleFavorite }) {
+function MusicCard({
+  song,
+  onSelect,
+  isFavorite,
+  onToggleFavorite,
+  onAddToPlaylist,
+}) {
   return (
     <article className="music-card">
       <div className="music-cover-wrapper">
@@ -31,9 +36,16 @@ function MusicCard({ song, onSelect, isFavorite, onToggleFavorite }) {
       </div>
 
       <div className="music-card-info">
-        <h3>{song.title}</h3>
-        <p>{song.artist}</p>
+        <h3 title={song.title}>{song.title}</h3>
+        <p title={song.artist}>{song.artist}</p>
       </div>
+
+      <button
+        className="add-to-playlist-button"
+        onClick={() => onAddToPlaylist(song)}
+      >
+        + Add to Playlist
+      </button>
     </article>
   );
 }
