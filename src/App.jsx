@@ -6,6 +6,7 @@ import PlayerBar from "./components/PlayerBar";
 import MusicCard from "./components/MusicCard";
 import PlaylistSection from "./components/PlaylistSection";
 import PlaylistModal from "./components/PlaylistModal";
+import QueuePanel from "./components/QueuePanel";
 import songs from "./data/songs";
 
 function App() {
@@ -20,9 +21,11 @@ function App() {
   const [volume, setVolume] = useState(0.7);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("home");
-  const [playlistQueue, setPlaylistQueue] = useState([]);
+
   const [selectedSongForPlaylist, setSelectedSongForPlaylist] =
     useState(null);
+
+  const [playlistQueue, setPlaylistQueue] = useState([]);
 
   const [favoriteSongs, setFavoriteSongs] = useState(() => {
     const savedFavorites = localStorage.getItem("sonicflow-favorites");
@@ -116,8 +119,7 @@ function App() {
         const remainingSongs = playlistQueueRef.current;
 
         if (remainingSongs.length > 0) {
-          const nextSong = remainingSongs[0];
-          const updatedQueue = remainingSongs.slice(1);
+          const [nextSong, ...updatedQueue] = remainingSongs;
 
           playlistQueueRef.current = updatedQueue;
           setPlaylistQueue(updatedQueue);
@@ -222,22 +224,29 @@ function App() {
   };
 
   const handlePlayPlaylist = (playlistSongIds) => {
-    const playlistSongList = playlistSongIds
+    const playlistSongs = playlistSongIds
       .map((songId) => songs.find((song) => song.id === songId))
       .filter(Boolean);
 
-    if (playlistSongList.length === 0) {
+    if (playlistSongs.length === 0) {
       return;
     }
 
-    const firstSong = playlistSongList[0];
-    const remainingSongs = playlistSongList.slice(1);
+    const [firstSong, ...remainingSongs] = playlistSongs;
 
     playlistModeRef.current = true;
     playlistQueueRef.current = remainingSongs;
-
     setPlaylistQueue(remainingSongs);
     setCurrentSong(firstSong);
+  };
+
+  const handleRemoveSongFromQueue = (songId) => {
+    const updatedQueue = playlistQueueRef.current.filter(
+      (song) => song.id !== songId
+    );
+
+    playlistQueueRef.current = updatedQueue;
+    setPlaylistQueue(updatedQueue);
   };
 
   const handleToggleFavorite = (songId) => {
@@ -293,7 +302,9 @@ function App() {
 
         return {
           ...playlist,
-          songs: playlist.songs.filter((id) => id !== songId),
+          songs: playlist.songs.filter(
+            (playlistSongId) => playlistSongId !== songId
+          ),
         };
       })
     );
@@ -555,6 +566,16 @@ function App() {
                 </div>
               )}
             </section>
+          )}
+
+          {playlistQueue.length > 0 && (
+            <QueuePanel
+              currentSong={currentSong}
+              playlistQueue={playlistQueue}
+              onSelectSong={handleSelectSong}
+              onClearQueue={clearPlaylistQueue}
+              onRemoveSong={handleRemoveSongFromQueue}
+            />
           )}
         </main>
       </div>
