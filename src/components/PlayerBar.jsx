@@ -2,13 +2,13 @@
 function PlayerBar({
   currentSong,
   isPlaying,
-  currentTime,
-  duration,
-  volume,
   onTogglePlay,
   onNext,
   onPrevious,
+  currentTime,
+  duration,
   onSeek,
+  volume,
   onVolumeChange,
 }) {
   const formatTime = (time) => {
@@ -19,62 +19,67 @@ function PlayerBar({
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
 
-    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const progress = duration > 0
-    ? (currentTime / duration) * 100
-    : 0;
+  const progressPercentage =
+    duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <footer className="player-bar">
       <div className="player-song">
-        <img
-          src={currentSong.cover}
-          alt=""
-          className="player-cover"
-        />
+        {currentSong ? (
+          <img
+            src={currentSong.cover}
+            alt={`${currentSong.title} cover`}
+            className="player-cover"
+          />
+        ) : (
+          <div className="player-cover"></div>
+        )}
 
-        <div className="player-song-info">
-          <strong>{currentSong.title}</strong>
-          <span>{currentSong.artist}</span>
+        <div className="player-song-details">
+          <strong>
+            {currentSong ? currentSong.title : "No song selected"}
+          </strong>
+
+          <span>
+            {currentSong
+              ? currentSong.artist
+              : "Choose a song to start listening"}
+          </span>
         </div>
-
-        <button className="player-like" aria-label="Like song">
-          ♡
-        </button>
       </div>
 
-      <div className="player-controls">
-        <div className="control-buttons">
-          <button aria-label="Shuffle">⤨</button>
-
+      <div className="player-center">
+        <div className="player-controls">
           <button
-            aria-label="Previous song"
             onClick={onPrevious}
+            aria-label="Previous song"
+            disabled={!currentSong}
           >
-            ◀◀
+            |◀
           </button>
 
           <button
             className="main-play-button"
-            aria-label={isPlaying ? "Pause" : "Play"}
             onClick={onTogglePlay}
+            aria-label={isPlaying ? "Pause song" : "Play song"}
+            disabled={!currentSong}
           >
             {isPlaying ? "Ⅱ" : "▶"}
           </button>
 
           <button
-            aria-label="Next song"
             onClick={onNext}
+            aria-label="Next song"
+            disabled={!currentSong}
           >
-            ▶▶
+            ▶|
           </button>
-
-          <button aria-label="Repeat">↻</button>
         </div>
 
-        <div className="progress-container">
+        <div className="player-progress">
           <span>{formatTime(currentTime)}</span>
 
           <input
@@ -82,10 +87,13 @@ function PlayerBar({
             min="0"
             max={duration || 0}
             step="0.1"
-            value={Math.min(currentTime, duration || 0)}
+            value={currentTime}
             onChange={(event) => onSeek(Number(event.target.value))}
-            className="progress-slider"
-            aria-label="Seek through song"
+            style={{
+              "--progress": `${progressPercentage}%`,
+            }}
+            disabled={!currentSong || duration === 0}
+            aria-label="Song progress"
           />
 
           <span>{formatTime(duration)}</span>
@@ -93,7 +101,7 @@ function PlayerBar({
       </div>
 
       <div className="player-volume">
-        <span>♬</span>
+        <span>{volume === 0 ? "🔇" : "🔊"}</span>
 
         <input
           type="range"
@@ -101,10 +109,7 @@ function PlayerBar({
           max="1"
           step="0.01"
           value={volume}
-          onChange={(event) =>
-            onVolumeChange(Number(event.target.value))
-          }
-          className="volume-slider"
+          onChange={(event) => onVolumeChange(Number(event.target.value))}
           aria-label="Volume"
         />
       </div>
