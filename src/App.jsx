@@ -14,8 +14,22 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const featuredSongs = songs.slice(0, 4);
+  const filteredSongs = songs.filter((song) => {
+    const query = searchQuery.toLowerCase().trim();
+
+    if (!query) {
+      return true;
+    }
+
+    return (
+      song.title.toLowerCase().includes(query) ||
+      song.artist.toLowerCase().includes(query) ||
+      song.album.toLowerCase().includes(query) ||
+      song.genre.toLowerCase().includes(query)
+    );
+  });
 
   useEffect(() => {
     const audio = new Audio();
@@ -81,6 +95,12 @@ function App() {
 
       audio.src = "";
     };
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
   }, [volume]);
 
   useEffect(() => {
@@ -184,13 +204,7 @@ function App() {
   };
 
   const handleVolumeChange = (newVolume) => {
-    const audio = audioRef.current;
-
     setVolume(newVolume);
-
-    if (audio) {
-      audio.volume = newVolume;
-    }
   };
 
   return (
@@ -198,7 +212,10 @@ function App() {
       <Sidebar />
 
       <div className="app-content">
-        <TopBar />
+        <TopBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
         <main className="main-content">
           <section className="welcome-section">
@@ -214,25 +231,45 @@ function App() {
           <section className="featured-section">
             <div className="section-heading">
               <div>
-                <p className="section-label">HANDPICKED FOR YOU</p>
+                <p className="section-label">
+                  {searchQuery.trim()
+                    ? "SEARCH RESULTS"
+                    : "HANDPICKED FOR YOU"}
+                </p>
 
-                <h2>Featured Music</h2>
+                <h2>
+                  {searchQuery.trim()
+                    ? "Search Results"
+                    : "Featured Music"}
+                </h2>
               </div>
 
-              <button className="see-all-button">
-                See all →
-              </button>
+              <span className="song-count">
+                {filteredSongs.length} songs
+              </span>
             </div>
 
-            <div className="music-grid">
-              {featuredSongs.map((song) => (
-                <MusicCard
-                  key={song.id}
-                  song={song}
-                  onSelect={handleSelectSong}
-                />
-              ))}
-            </div>
+            {filteredSongs.length > 0 ? (
+              <div className="music-grid">
+                {filteredSongs.map((song) => (
+                  <MusicCard
+                    key={song.id}
+                    song={song}
+                    onSelect={handleSelectSong}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-search-state">
+                <span className="empty-search-icon">⌕</span>
+
+                <h3>No music found</h3>
+
+                <p>
+                  Try searching for a different song, artist, album, or genre.
+                </p>
+              </div>
+            )}
           </section>
         </main>
       </div>
