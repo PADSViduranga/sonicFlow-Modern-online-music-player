@@ -16,6 +16,21 @@ function App() {
   const [volume, setVolume] = useState(0.7);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [favoriteSongs, setFavoriteSongs] = useState(() => {
+    const savedFavorites = localStorage.getItem("sonicflow-favorites");
+
+    if (!savedFavorites) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(savedFavorites);
+    } catch (error) {
+      console.error("Unable to load saved favorites:", error);
+      return [];
+    }
+  });
+
   const filteredSongs = songs.filter((song) => {
     const query = searchQuery.toLowerCase().trim();
 
@@ -30,6 +45,13 @@ function App() {
       song.genre.toLowerCase().includes(query)
     );
   });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "sonicflow-favorites",
+      JSON.stringify(favoriteSongs)
+    );
+  }, [favoriteSongs]);
 
   useEffect(() => {
     const audio = new Audio();
@@ -131,6 +153,16 @@ function App() {
 
   const handleSelectSong = (song) => {
     setCurrentSong(song);
+  };
+
+  const handleToggleFavorite = (songId) => {
+    setFavoriteSongs((previousFavorites) => {
+      if (previousFavorites.includes(songId)) {
+        return previousFavorites.filter((id) => id !== songId);
+      }
+
+      return [...previousFavorites, songId];
+    });
   };
 
   const handleTogglePlay = () => {
@@ -256,6 +288,8 @@ function App() {
                     key={song.id}
                     song={song}
                     onSelect={handleSelectSong}
+                    isFavorite={favoriteSongs.includes(song.id)}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 ))}
               </div>

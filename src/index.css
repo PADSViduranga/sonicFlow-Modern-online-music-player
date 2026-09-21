@@ -1103,3 +1103,47 @@ button:disabled {
     font-size: 10px;
   }
 }
+
+
+/* Favorite button */
+
+.card-favorite-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  display: grid;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+
+  color: #ffffff;
+  background: rgba(12, 12, 20, 0.75);
+
+  font-size: 19px;
+  cursor: pointer;
+
+  opacity: 0;
+  transform: translateY(-5px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.music-cover-wrapper:hover .card-favorite-button,
+.card-favorite-button:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-favorite-button:hover {
+  background: #342044;
+  color: #d8b4fe;
+}
