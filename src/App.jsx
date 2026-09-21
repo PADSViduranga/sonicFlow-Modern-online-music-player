@@ -1,30 +1,63 @@
 
 import { useEffect, useRef, useState } from "react";
-
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
-import MusicCard from "./components/MusicCard";
-import RecentlyPlayed from "./components/RecentlyPlayed";
 import PlayerBar from "./components/PlayerBar";
-
-import {
-  featuredSongs,
-  recentlyPlayed,
-} from "./data/songs";
+import MusicCard from "./components/MusicCard";
+import songs from "./data/songs";
 
 function App() {
   const audioRef = useRef(null);
 
-  const [currentSong, setCurrentSong] = useState(featuredSongs[0]);
+  const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [favoriteSongs, setFavoriteSongs] = useState(() => {
+    const savedFavorites = localStorage.getItem("sonicflow-favorites");
+
+    if (!savedFavorites) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(savedFavorites);
+    } catch (error) {
+      console.error("Unable to load saved favorites:", error);
+      return [];
+    }
+  });
+
+  const filteredSongs = songs.filter((song) => {
+    const query = searchQuery.toLowerCase().trim();
+
+    if (!query) {
+      return true;
+    }
+
+    return (
+      song.title.toLowerCase().includes(query) ||
+      song.artist.toLowerCase().includes(query) ||
+      song.album.toLowerCase().includes(query) ||
+      song.genre.toLowerCase().includes(query)
+    );
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "sonicflow-favorites",
+      JSON.stringify(favoriteSongs)
+    );
+  }, [favoriteSongs]);
 
   useEffect(() => {
     const audio = new Audio();
+
     audioRef.current = audio;
-    audio.volume = 0.7;
+    audio.volume = volume;
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
@@ -34,86 +67,161 @@ function App() {
       setDuration(audio.duration);
     };
 
+    const handlePlay = () => {
+      setIsPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+
     const handleEnded = () => {
+      setIsPlaying(false);
+
+      setCurrentSong((previousSong) => {
+        if (!previousSong) {
+          return null;
+        }
+
+        const currentIndex = songs.findIndex(
+          (song) => song.id === previousSong.id
+        );
+
+        const nextIndex = (currentIndex + 1) % songs.length;
+
+        return songs[nextIndex];
+      });
+    };
+
+    const handleError = () => {
+      console.error("Unable to load the selected audio.");
       setIsPlaying(false);
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.pause();
+
       audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener(
-        "loadedmetadata",
-        handleLoadedMetadata
-      );
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
-      audioRef.current = null;
+      audio.removeEventListener("error", handleError);
+
+      audio.src = "";
     };
   }, []);
 
   useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+
+  useEffect(() => {
     const audio = audioRef.current;
 
-    if (!audio || !currentSong?.audioUrl) {
+    if (!audio || !currentSong) {
       return;
     }
 
-    audio.pause();
-    audio.src = currentSong.audioUrl;
-    audio.load();
+    audio.src = currentSong.audio;
+    audio.currentTime = 0;
 
     setCurrentTime(0);
     setDuration(0);
-    setIsPlaying(false);
+
+    audio.load();
+
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch((error) => {
+        console.error("Playback could not start:", error);
+        setIsPlaying(false);
+      });
   }, [currentSong]);
 
   const handleSelectSong = (song) => {
     setCurrentSong(song);
   };
 
-  const handleTogglePlay = async () => {
+  const handleToggleFavorite = (songId) => {
+    setFavoriteSongs((previousFavorites) => {
+      if (previousFavorites.includes(songId)) {
+        return previousFavorites.filter((id) => id !== songId);
+      }
+
+      return [...previousFavorites, songId];
+    });
+  };
+
+  const handleTogglePlay = () => {
     const audio = audioRef.current;
 
-    if (!audio || !currentSong?.audioUrl) {
+    if (!audio || !currentSong) {
       return;
     }
 
-    try {
-      if (audio.paused) {
-        await audio.play();
-        setIsPlaying(true);
-      } else {
-        audio.pause();
-        setIsPlaying(false);
-      }
-    } catch (error) {
-      console.error("Audio playback failed:", error);
+    if (audio.paused) {
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((error) => {
+          console.error("Playback could not start:", error);
+        });
+    } else {
+      audio.pause();
       setIsPlaying(false);
     }
   };
 
   const handleNext = () => {
-    const nextIndex =
-      (featuredSongs.findIndex(
-        (song) => song.id === currentSong.id
-      ) + 1) % featuredSongs.length;
+    if (!currentSong) {
+      return;
+    }
 
-    setCurrentSong(featuredSongs[nextIndex]);
+    const currentIndex = songs.findIndex(
+      (song) => song.id === currentSong.id
+    );
+
+    const nextIndex = (currentIndex + 1) % songs.length;
+
+    setCurrentSong(songs[nextIndex]);
   };
 
   const handlePrevious = () => {
-    const currentIndex = featuredSongs.findIndex(
+    const audio = audioRef.current;
+
+    if (!currentSong || !audio) {
+      return;
+    }
+
+    if (audio.currentTime > 3) {
+      audio.currentTime = 0;
+      setCurrentTime(0);
+      return;
+    }
+
+    const currentIndex = songs.findIndex(
       (song) => song.id === currentSong.id
     );
 
     const previousIndex =
-      (currentIndex - 1 + featuredSongs.length) %
-      featuredSongs.length;
+      (currentIndex - 1 + songs.length) % songs.length;
 
-    setCurrentSong(featuredSongs[previousIndex]);
+    setCurrentSong(songs[previousIndex]);
   };
 
   const handleSeek = (time) => {
@@ -128,74 +236,88 @@ function App() {
   };
 
   const handleVolumeChange = (newVolume) => {
-    const audio = audioRef.current;
-
-    if (!audio) {
-      return;
-    }
-
-    audio.volume = newVolume;
     setVolume(newVolume);
   };
 
   return (
-    <div className="app-layout">
+    <div className="app">
       <Sidebar />
 
-      <main className="main-content">
-        <TopBar />
+      <div className="app-content">
+        <TopBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
-        <div className="dashboard-content">
+        <main className="main-content">
           <section className="welcome-section">
-            <p className="welcome-label">WELCOME BACK</p>
+            <p className="section-label">YOUR MUSIC SPACE</p>
 
-            <h1>
-              Discover your
-              <br />
-              next <span>favorite sound.</span>
-            </h1>
+            <h1>Everything you love, in one place.</h1>
 
             <p className="welcome-description">
-              Find the perfect soundtrack for every moment.
+              Discover music, create playlists, and enjoy your favorite songs.
             </p>
           </section>
 
           <section className="featured-section">
             <div className="section-heading">
-              <h2>Featured Music</h2>
-              <button className="see-all-button">
-                See all →
-              </button>
+              <div>
+                <p className="section-label">
+                  {searchQuery.trim()
+                    ? "SEARCH RESULTS"
+                    : "HANDPICKED FOR YOU"}
+                </p>
+
+                <h2>
+                  {searchQuery.trim()
+                    ? "Search Results"
+                    : "Featured Music"}
+                </h2>
+              </div>
+
+              <span className="song-count">
+                {filteredSongs.length} songs
+              </span>
             </div>
 
-            <div className="music-grid">
-              {featuredSongs.map((song) => (
-                <MusicCard
-                  key={song.id}
-                  song={song}
-                  onSelect={handleSelectSong}
-                />
-              ))}
-            </div>
+            {filteredSongs.length > 0 ? (
+              <div className="music-grid">
+                {filteredSongs.map((song) => (
+                  <MusicCard
+                    key={song.id}
+                    song={song}
+                    onSelect={handleSelectSong}
+                    isFavorite={favoriteSongs.includes(song.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-search-state">
+                <span className="empty-search-icon">⌕</span>
+
+                <h3>No music found</h3>
+
+                <p>
+                  Try searching for a different song, artist, album, or genre.
+                </p>
+              </div>
+            )}
           </section>
-
-          <RecentlyPlayed
-            songs={recentlyPlayed}
-            onSelect={handleSelectSong}
-          />
-        </div>
-      </main>
+        </main>
+      </div>
 
       <PlayerBar
         currentSong={currentSong}
         isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
         onTogglePlay={handleTogglePlay}
         onNext={handleNext}
         onPrevious={handlePrevious}
+        currentTime={currentTime}
+        duration={duration}
         onSeek={handleSeek}
+        volume={volume}
         onVolumeChange={handleVolumeChange}
       />
     </div>

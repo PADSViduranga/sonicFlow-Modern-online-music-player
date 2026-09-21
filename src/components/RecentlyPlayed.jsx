@@ -1,5 +1,4 @@
-
-function RecentlyPlayed({ songs, onSelect }) {
+function RecentlyPlayed({ songs, onSelect, onAddToQueue }) {
   return (
     <section className="recent-section">
       <div className="section-heading">
@@ -9,20 +8,29 @@ function RecentlyPlayed({ songs, onSelect }) {
 
       <div className="recent-list">
         {songs.map((song) => (
-          <button
-            className="recent-item"
-            key={song.id}
-            onClick={() => onSelect(song)}
-          >
-            <img src={song.cover} alt="" className="recent-cover" />
+          <div className="recent-item-wrapper" key={song.id}>
+            <button
+              className="recent-item"
+              onClick={() => onSelect(song)}
+            >
+              <img src={song.cover} alt="" className="recent-cover" />
 
-            <span className="recent-details">
-              <strong>{song.title}</strong>
-              <small>{song.artist}</small>
-            </span>
+              <span className="recent-details">
+                <strong>{song.title}</strong>
+                <small>{song.artist}</small>
+              </span>
 
-            <span className="recent-play">▶</span>
-          </button>
+              <span className="recent-play">▶</span>
+            </button>
+
+            <button
+              className="recent-add-queue-button"
+              onClick={() => onAddToQueue(song)}
+              aria-label={`Add ${song.title} to queue`}
+            >
+              +
+            </button>
+          </div>
         ))}
       </div>
     </section>

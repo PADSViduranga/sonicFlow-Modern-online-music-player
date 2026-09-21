@@ -1,5 +1,5 @@
 
-function MusicCard({ song, onSelect }) {
+function MusicCard({ song, onSelect, isFavorite, onToggleFavorite }) {
   return (
     <article className="music-card">
       <div className="music-cover-wrapper">
@@ -8,6 +8,18 @@ function MusicCard({ song, onSelect }) {
           alt={`${song.title} cover`}
           className="music-cover"
         />
+
+        <button
+          className="card-favorite-button"
+          onClick={() => onToggleFavorite(song.id)}
+          aria-label={
+            isFavorite
+              ? `Remove ${song.title} from favorites`
+              : `Add ${song.title} to favorites`
+          }
+        >
+          {isFavorite ? "♥" : "♡"}
+        </button>
 
         <button
           className="card-play-button"
