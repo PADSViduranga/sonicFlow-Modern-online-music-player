@@ -1,4 +1,3 @@
-
 function PlayerBar({
   currentSong,
   isPlaying,
@@ -10,6 +9,8 @@ function PlayerBar({
   onSeek,
   volume,
   onVolumeChange,
+  isShuffleOn,
+  onToggleShuffle,
 }) {
   const formatTime = (time) => {
     if (!Number.isFinite(time) || time < 0) {
@@ -40,7 +41,9 @@ function PlayerBar({
 
         <div className="player-song-details">
           <strong>
-            {currentSong ? currentSong.title : "No song selected"}
+            {currentSong
+              ? currentSong.title
+              : "No song selected"}
           </strong>
 
           <span>
@@ -62,9 +65,31 @@ function PlayerBar({
           </button>
 
           <button
+            className={`shuffle-button ${
+              isShuffleOn ? "active" : ""
+            }`}
+            onClick={onToggleShuffle}
+            aria-label={
+              isShuffleOn
+                ? "Disable shuffle"
+                : "Enable shuffle"
+            }
+            aria-pressed={isShuffleOn}
+            title={
+              isShuffleOn
+                ? "Shuffle On"
+                : "Shuffle Off"
+            }
+          >
+            🔀
+          </button>
+
+          <button
             className="main-play-button"
             onClick={onTogglePlay}
-            aria-label={isPlaying ? "Pause song" : "Play song"}
+            aria-label={
+              isPlaying ? "Pause song" : "Play song"
+            }
             disabled={!currentSong}
           >
             {isPlaying ? "Ⅱ" : "▶"}
@@ -88,11 +113,15 @@ function PlayerBar({
             max={duration || 0}
             step="0.1"
             value={currentTime}
-            onChange={(event) => onSeek(Number(event.target.value))}
+            onChange={(event) =>
+              onSeek(Number(event.target.value))
+            }
             style={{
               "--progress": `${progressPercentage}%`,
             }}
-            disabled={!currentSong || duration === 0}
+            disabled={
+              !currentSong || duration === 0
+            }
             aria-label="Song progress"
           />
 
@@ -101,7 +130,9 @@ function PlayerBar({
       </div>
 
       <div className="player-volume">
-        <span>{volume === 0 ? "🔇" : "🔊"}</span>
+        <span>
+          {volume === 0 ? "🔇" : "🔊"}
+        </span>
 
         <input
           type="range"
@@ -109,7 +140,11 @@ function PlayerBar({
           max="1"
           step="0.01"
           value={volume}
-          onChange={(event) => onVolumeChange(Number(event.target.value))}
+          onChange={(event) =>
+            onVolumeChange(
+              Number(event.target.value)
+            )
+          }
           aria-label="Volume"
         />
       </div>
