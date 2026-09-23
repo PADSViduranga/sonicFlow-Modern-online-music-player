@@ -19,114 +19,86 @@ function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isShuffleOn, setIsShuffleOn] = useState(false);
+  const [repeatMode, setRepeatMode] = useState("off");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeSection, setActiveSection] =
-    useState("home");
+  const [activeSection, setActiveSection] = useState("home");
 
   const [
     selectedSongForPlaylist,
     setSelectedSongForPlaylist,
   ] = useState(null);
 
-  const [playlistQueue, setPlaylistQueue] =
-    useState([]);
+  const [playlistQueue, setPlaylistQueue] = useState([]);
 
-  const [favoriteSongs, setFavoriteSongs] =
-    useState(() => {
-      const saved =
-        localStorage.getItem(
-          "sonicflow-favorites"
-        );
+  const [favoriteSongs, setFavoriteSongs] = useState(() => {
+    const saved = localStorage.getItem("sonicflow-favorites");
 
-      if (!saved) {
-        return [];
-      }
-
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    });
-
-  const [playlists, setPlaylists] =
-    useState(() => {
-      const saved =
-        localStorage.getItem(
-          "sonicflow-playlists"
-        );
-
-      if (!saved) {
-        return [];
-      }
-
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    });
-
-  const [recentlyPlayed, setRecentlyPlayed] =
-    useState(() => {
-      const saved =
-        localStorage.getItem(
-          "sonicflow-recently-played"
-        );
-
-      if (!saved) {
-        return [];
-      }
-
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    });
-
-  const recentlyPlayedSongs =
-    recentlyPlayed
-      .map((songId) =>
-        songs.find(
-          (song) => song.id === songId
-        )
-      )
-      .filter(Boolean);
-
-  const filteredSongs = songs.filter(
-    (song) => {
-      const query =
-        searchQuery
-          .trim()
-          .toLowerCase();
-
-      if (!query) {
-        return true;
-      }
-
-      return (
-        song.title
-          .toLowerCase()
-          .includes(query) ||
-        song.artist
-          .toLowerCase()
-          .includes(query) ||
-        song.album
-          .toLowerCase()
-          .includes(query) ||
-        song.genre
-          .toLowerCase()
-          .includes(query)
-      );
+    if (!saved) {
+      return [];
     }
-  );
 
-  const favoriteSongList =
-    songs.filter((song) =>
-      favoriteSongs.includes(song.id)
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return [];
+    }
+  });
+
+  const [playlists, setPlaylists] = useState(() => {
+    const saved = localStorage.getItem("sonicflow-playlists");
+
+    if (!saved) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return [];
+    }
+  });
+
+  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
+    const saved = localStorage.getItem(
+      "sonicflow-recently-played"
     );
+
+    if (!saved) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return [];
+    }
+  });
+
+  const recentlyPlayedSongs = recentlyPlayed
+    .map((songId) =>
+      songs.find((song) => song.id === songId)
+    )
+    .filter(Boolean);
+
+  const filteredSongs = songs.filter((song) => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return true;
+    }
+
+    return (
+      song.title.toLowerCase().includes(query) ||
+      song.artist.toLowerCase().includes(query) ||
+      song.album.toLowerCase().includes(query) ||
+      song.genre.toLowerCase().includes(query)
+    );
+  });
+
+  const favoriteSongList = songs.filter((song) =>
+    favoriteSongs.includes(song.id)
+  );
 
   useEffect(() => {
     localStorage.setItem(
@@ -154,19 +126,16 @@ function App() {
       return;
     }
 
-    setRecentlyPlayed(
-      (previousHistory) => {
-        const updated = [
-          currentSong.id,
-          ...previousHistory.filter(
-            (id) =>
-              id !== currentSong.id
-          ),
-        ];
+    setRecentlyPlayed((previousHistory) => {
+      const updated = [
+        currentSong.id,
+        ...previousHistory.filter(
+          (id) => id !== currentSong.id
+        ),
+      ];
 
-        return updated.slice(0, 10);
-      }
-    );
+      return updated.slice(0, 10);
+    });
   }, [currentSong]);
 
   useEffect(() => {
@@ -176,16 +145,12 @@ function App() {
     audio.volume = volume;
 
     const handleTimeUpdate = () => {
-      setCurrentTime(
-        audio.currentTime
-      );
+      setCurrentTime(audio.currentTime);
     };
 
     const handleLoadedMetadata = () => {
       setDuration(
-        Number.isFinite(
-          audio.duration
-        )
+        Number.isFinite(audio.duration)
           ? audio.duration
           : 0
       );
@@ -204,32 +169,70 @@ function App() {
         return;
       }
 
+      if (repeatMode === "one") {
+        audio.currentTime = 0;
+
+        audio
+          .play()
+          .catch((error) => {
+            console.error(
+              "Unable to replay song:",
+              error
+            );
+
+            setIsPlaying(false);
+          });
+
+        return;
+      }
+
       if (playlistModeRef.current) {
         const nextSong =
           playlistQueueRef.current[0];
 
         if (nextSong) {
           const updatedQueue =
-            playlistQueueRef.current.slice(
-              1
-            );
+            playlistQueueRef.current.slice(1);
 
           playlistQueueRef.current =
             updatedQueue;
 
-          setPlaylistQueue(
-            updatedQueue
-          );
-
+          setPlaylistQueue(updatedQueue);
           setCurrentSong(nextSong);
+          setIsPlaying(true);
+
           return;
         }
 
-        playlistModeRef.current =
-          false;
+        if (repeatMode === "all") {
+          const playlistSongs = [
+            currentSong,
+            ...playlistQueueRef.current,
+          ];
 
-        playlistQueueRef.current =
-          [];
+          if (playlistSongs.length > 0) {
+            const [nextSong, ...remainingSongs] =
+              playlistSongs;
+
+            playlistModeRef.current = true;
+
+            playlistQueueRef.current =
+              remainingSongs;
+
+            setPlaylistQueue(
+              remainingSongs
+            );
+
+            setCurrentSong(nextSong);
+            setIsPlaying(true);
+
+            return;
+          }
+        }
+
+        playlistModeRef.current = false;
+
+        playlistQueueRef.current = [];
 
         setPlaylistQueue([]);
         setCurrentSong(null);
@@ -239,41 +242,31 @@ function App() {
       }
 
       if (isShuffleOn) {
-        const availableSongs =
-          songs.filter(
-            (song) =>
-              song.id !==
-              currentSong.id
-          );
+        const availableSongs = songs.filter(
+          (song) =>
+            song.id !== currentSong.id
+        );
 
-        if (
-          availableSongs.length ===
-          0
-        ) {
+        if (availableSongs.length === 0) {
           return;
         }
 
-        const randomIndex =
-          Math.floor(
-            Math.random() *
-              availableSongs.length
-          );
+        const randomIndex = Math.floor(
+          Math.random() *
+            availableSongs.length
+        );
 
         setCurrentSong(
-          availableSongs[
-            randomIndex
-          ]
+          availableSongs[randomIndex]
         );
 
         return;
       }
 
-      const currentIndex =
-        songs.findIndex(
-          (song) =>
-            song.id ===
-            currentSong.id
-        );
+      const currentIndex = songs.findIndex(
+        (song) =>
+          song.id === currentSong.id
+      );
 
       if (
         currentIndex === -1 ||
@@ -282,12 +275,21 @@ function App() {
         return;
       }
 
-      const nextIndex =
-        (currentIndex + 1) %
-        songs.length;
+      const nextIndex = currentIndex + 1;
+
+      if (
+        nextIndex >= songs.length &&
+        repeatMode === "off"
+      ) {
+        setIsPlaying(false);
+        return;
+      }
+
+      const actualNextIndex =
+        nextIndex % songs.length;
 
       setCurrentSong(
-        songs[nextIndex]
+        songs[actualNextIndex]
       );
     };
 
@@ -364,12 +366,15 @@ function App() {
 
       audio.src = "";
     };
-  }, [currentSong, isShuffleOn]);
+  }, [
+    currentSong,
+    isShuffleOn,
+    repeatMode,
+  ]);
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume =
-        volume;
+      audioRef.current.volume = volume;
     }
   }, [volume]);
 
@@ -389,25 +394,21 @@ function App() {
     audio.load();
 
     if (isPlaying) {
-      audio
-        .play()
-        .catch((error) => {
-          console.error(
-            "Playback failed:",
-            error
-          );
+      audio.play().catch((error) => {
+        console.error(
+          "Playback failed:",
+          error
+        );
 
-          setIsPlaying(false);
-        });
+        setIsPlaying(false);
+      });
     }
   }, [currentSong]);
 
   const clearPlaylistQueue = () => {
-    playlistModeRef.current =
-      false;
+    playlistModeRef.current = false;
 
-    playlistQueueRef.current =
-      [];
+    playlistQueueRef.current = [];
 
     setPlaylistQueue([]);
   };
@@ -468,51 +469,78 @@ function App() {
 
       if (nextSong) {
         const updatedQueue =
-          playlistQueueRef.current.slice(
-            1
-          );
+          playlistQueueRef.current.slice(1);
 
         playlistQueueRef.current =
           updatedQueue;
 
-        setPlaylistQueue(
-          updatedQueue
-        );
-
+        setPlaylistQueue(updatedQueue);
         setCurrentSong(nextSong);
         setIsPlaying(true);
 
         return;
       }
 
+      if (repeatMode === "all") {
+        const currentIndex =
+          songs.findIndex(
+            (song) =>
+              song.id === currentSong.id
+          );
+
+        if (currentIndex !== -1) {
+          const nextSong =
+            songs[
+              (currentIndex + 1) %
+                songs.length
+            ];
+
+          setCurrentSong(nextSong);
+          setIsPlaying(true);
+
+          return;
+        }
+      }
+
       clearPlaylistQueue();
     }
 
-    if (isShuffleOn) {
-      const availableSongs =
-        songs.filter(
-          (song) =>
-            song.id !==
-            currentSong.id
-        );
+    if (repeatMode === "one") {
+      const audio = audioRef.current;
 
-      if (
-        availableSongs.length ===
-        0
-      ) {
+      if (audio) {
+        audio.currentTime = 0;
+
+        audio
+          .play()
+          .catch((error) => {
+            console.error(
+              "Unable to replay song:",
+              error
+            );
+          });
+      }
+
+      return;
+    }
+
+    if (isShuffleOn) {
+      const availableSongs = songs.filter(
+        (song) =>
+          song.id !== currentSong.id
+      );
+
+      if (availableSongs.length === 0) {
         return;
       }
 
-      const randomIndex =
-        Math.floor(
-          Math.random() *
-            availableSongs.length
-        );
+      const randomIndex = Math.floor(
+        Math.random() *
+          availableSongs.length
+      );
 
       setCurrentSong(
-        availableSongs[
-          randomIndex
-        ]
+        availableSongs[randomIndex]
       );
 
       setIsPlaying(true);
@@ -520,23 +548,30 @@ function App() {
       return;
     }
 
-    const currentIndex =
-      songs.findIndex(
-        (song) =>
-          song.id ===
-          currentSong.id
-      );
+    const currentIndex = songs.findIndex(
+      (song) =>
+        song.id === currentSong.id
+    );
 
     if (currentIndex === -1) {
       return;
     }
 
     const nextIndex =
-      (currentIndex + 1) %
-      songs.length;
+      currentIndex + 1;
+
+    if (
+      nextIndex >= songs.length &&
+      repeatMode === "off"
+    ) {
+      return;
+    }
+
+    const actualNextIndex =
+      nextIndex % songs.length;
 
     setCurrentSong(
-      songs[nextIndex]
+      songs[actualNextIndex]
     );
 
     setIsPlaying(true);
@@ -557,20 +592,17 @@ function App() {
 
     clearPlaylistQueue();
 
-    const currentIndex =
-      songs.findIndex(
-        (song) =>
-          song.id ===
-          currentSong.id
-      );
+    const currentIndex = songs.findIndex(
+      (song) =>
+        song.id === currentSong.id
+    );
 
     if (currentIndex === -1) {
       return;
     }
 
     const previousIndex =
-      (currentIndex - 1 +
-        songs.length) %
+      (currentIndex - 1 + songs.length) %
       songs.length;
 
     setCurrentSong(
@@ -609,6 +641,20 @@ function App() {
     setIsShuffleOn(
       (previous) => !previous
     );
+  };
+
+  const handleToggleRepeat = () => {
+    setRepeatMode((previousMode) => {
+      if (previousMode === "off") {
+        return "all";
+      }
+
+      if (previousMode === "all") {
+        return "one";
+      }
+
+      return "off";
+    });
   };
 
   const handleToggleFavorite = (
@@ -650,12 +696,10 @@ function App() {
       songs: [],
     };
 
-    setPlaylists(
-      (previous) => [
-        ...previous,
-        newPlaylist,
-      ]
-    );
+    setPlaylists((previous) => [
+      ...previous,
+      newPlaylist,
+    ]);
   };
 
   const handleAddSongToPlaylist = (
@@ -692,52 +736,48 @@ function App() {
         )
     );
 
-    setSelectedSongForPlaylist(
-      null
-    );
+    setSelectedSongForPlaylist(null);
   };
 
   const handleDeletePlaylist = (
     playlistId
   ) => {
-    setPlaylists(
-      (previous) =>
-        previous.filter(
-          (playlist) =>
-            playlist.id !==
-            playlistId
-        )
+    setPlaylists((previous) =>
+      previous.filter(
+        (playlist) =>
+          playlist.id !==
+          playlistId
+      )
     );
   };
 
-  const handleRemoveSongFromPlaylist =
-    (
-      playlistId,
-      songId
-    ) => {
-      setPlaylists(
-        (previousPlaylists) =>
-          previousPlaylists.map(
-            (playlist) => {
-              if (
-                playlist.id !==
-                playlistId
-              ) {
-                return playlist;
-              }
-
-              return {
-                ...playlist,
-                songs:
-                  playlist.songs.filter(
-                    (id) =>
-                      id !== songId
-                  ),
-              };
+  const handleRemoveSongFromPlaylist = (
+    playlistId,
+    songId
+  ) => {
+    setPlaylists(
+      (previousPlaylists) =>
+        previousPlaylists.map(
+          (playlist) => {
+            if (
+              playlist.id !==
+              playlistId
+            ) {
+              return playlist;
             }
-          )
-      );
-    };
+
+            return {
+              ...playlist,
+              songs:
+                playlist.songs.filter(
+                  (id) =>
+                    id !== songId
+                ),
+            };
+          }
+        )
+    );
+  };
 
   const handleRenamePlaylist = (
     playlistId,
@@ -784,8 +824,7 @@ function App() {
         .filter(Boolean);
 
     if (
-      playlistSongs.length ===
-      0
+      playlistSongs.length === 0
     ) {
       return;
     }
@@ -795,8 +834,7 @@ function App() {
       ...remainingSongs
     ] = playlistSongs;
 
-    playlistModeRef.current =
-      true;
+    playlistModeRef.current = true;
 
     playlistQueueRef.current =
       remainingSongs;
@@ -809,21 +847,22 @@ function App() {
     setIsPlaying(true);
   };
 
-  const handleRemoveSongFromQueue =
-    (songId) => {
-      const updatedQueue =
-        playlistQueueRef.current.filter(
-          (song) =>
-            song.id !== songId
-        );
-
-      playlistQueueRef.current =
-        updatedQueue;
-
-      setPlaylistQueue(
-        updatedQueue
+  const handleRemoveSongFromQueue = (
+    songId
+  ) => {
+    const updatedQueue =
+      playlistQueueRef.current.filter(
+        (song) =>
+          song.id !== songId
       );
-    };
+
+    playlistQueueRef.current =
+      updatedQueue;
+
+    setPlaylistQueue(
+      updatedQueue
+    );
+  };
 
   const handleClearQueue = () => {
     clearPlaylistQueue();
@@ -1279,6 +1318,7 @@ function App() {
         isShuffleOn={
           isShuffleOn
         }
+        repeatMode={repeatMode}
         onPlayPause={
           handlePlayPause
         }
@@ -1295,6 +1335,9 @@ function App() {
         }
         onToggleShuffle={
           handleToggleShuffle
+        }
+        onToggleRepeat={
+          handleToggleRepeat
         }
       />
 

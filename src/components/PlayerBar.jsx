@@ -11,6 +11,8 @@ function PlayerBar({
   onVolumeChange,
   isShuffleOn,
   onToggleShuffle,
+  repeatMode,
+  onToggleRepeat,
 }) {
   const formatTime = (time) => {
     if (!Number.isFinite(time) || time < 0) {
@@ -20,11 +22,22 @@ function PlayerBar({
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
 
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const progressPercentage =
-    duration > 0 ? (currentTime / duration) * 100 : 0;
+    duration > 0
+      ? (currentTime / duration) * 100
+      : 0;
+
+  const repeatLabel =
+    repeatMode === "one"
+      ? "Repeat One"
+      : repeatMode === "all"
+      ? "Repeat All"
+      : "Repeat Off";
 
   return (
     <footer className="player-bar">
@@ -60,6 +73,7 @@ function PlayerBar({
             onClick={onPrevious}
             aria-label="Previous song"
             disabled={!currentSong}
+            title="Previous"
           >
             |◀
           </button>
@@ -88,7 +102,9 @@ function PlayerBar({
             className="main-play-button"
             onClick={onTogglePlay}
             aria-label={
-              isPlaying ? "Pause song" : "Play song"
+              isPlaying
+                ? "Pause song"
+                : "Play song"
             }
             disabled={!currentSong}
           >
@@ -99,13 +115,35 @@ function PlayerBar({
             onClick={onNext}
             aria-label="Next song"
             disabled={!currentSong}
+            title="Next"
           >
             ▶|
+          </button>
+
+          <button
+            className={`repeat-button ${
+              repeatMode !== "off"
+                ? "active"
+                : ""
+            }`}
+            onClick={onToggleRepeat}
+            aria-label={repeatLabel}
+            aria-pressed={
+              repeatMode !== "off"
+            }
+            title={repeatLabel}
+            disabled={!currentSong}
+          >
+            {repeatMode === "one"
+              ? "🔂"
+              : "🔁"}
           </button>
         </div>
 
         <div className="player-progress">
-          <span>{formatTime(currentTime)}</span>
+          <span>
+            {formatTime(currentTime)}
+          </span>
 
           <input
             type="range"
@@ -114,24 +152,31 @@ function PlayerBar({
             step="0.1"
             value={currentTime}
             onChange={(event) =>
-              onSeek(Number(event.target.value))
+              onSeek(
+                Number(event.target.value)
+              )
             }
             style={{
               "--progress": `${progressPercentage}%`,
             }}
             disabled={
-              !currentSong || duration === 0
+              !currentSong ||
+              duration === 0
             }
             aria-label="Song progress"
           />
 
-          <span>{formatTime(duration)}</span>
+          <span>
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
 
       <div className="player-volume">
         <span>
-          {volume === 0 ? "🔇" : "🔊"}
+          {volume === 0
+            ? "🔇"
+            : "🔊"}
         </span>
 
         <input
